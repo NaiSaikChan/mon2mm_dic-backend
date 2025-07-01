@@ -37,6 +37,8 @@ module.exports = {
 };
 
 // Middleware တွေ ထည့်သွင်းခြင်း။ (JSON request body တွေကို parse လုပ်နိုင်ဖို့)
+const cors = require('cors');
+app.use(cors());
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
 
@@ -44,14 +46,14 @@ app.use(express.urlencoded({ extended: true })); // For parsing application/x-ww
 const wordsRoutes = require('./routes/wordsRoutes');
 app.use('/api/words', wordsRoutes);
 
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
 
 // Basic Route (optional - for testing if server is up)
 app.get('/', (req, res) => {
   res.send('Hello from Mon Dictionary Backend!');
-});
-
-const cors = require('cors');
-app.use(cors()); 
+}); 
 
 if (require.main === module) {
   app.listen(port, () => {
