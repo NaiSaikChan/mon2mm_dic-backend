@@ -13,14 +13,15 @@ const searchWords = async (req, res) => {
   try {
     const [rows] = await pool.execute(
       `SELECT * FROM mon2mm_dictionary WHERE
-       mon_word LIKE ? OR
-       definition LIKE ?
-       ORDER BY case when mon_word = ? then 1
-       when mon_word LIKE ? then 2
-       when mon_word LIKE ? then 3
-       end
-       LIMIT 100`,
-      [query , `%${query}%`, query, `${query}%`, `%${query}%`] // Note: parameters need to match your `LIKE` and exact match logic
+        mon_word = ? OR
+        mon_word LIKE ? OR
+        mon_word LIKE ? OR
+        definition LIKE ?
+        ORDER BY CASE WHEN mon_word = ? THEN 1
+          WHEN mon_word LIKE ? THEN 2
+          WHEN mon_word LIKE ? THEN 3
+        ELSE 4 END`,
+      [query, `${query}%`, `%${query}%`,`%${query}%`, query, `${query}%`, `%${query}%`] // Note: parameters need to match your `LIKE` and exact match logic
     );
 
     if (rows.length === 0) {
@@ -214,10 +215,67 @@ const deleteWord = async (req, res) => {
   }
 };
 
+const paginatedSearchWords = async (req, res) => {
+  // Good: Default values for page and pageSize in destructuring.
+  const { query, page = 1, pageSize = 20 } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: 'Search query is required.' });
+  }
+
+  // Good: Ensures page and pageSize are valid positive integers.
+  const limit = Math.max(parseInt(pageSize), 1);
+  const offset = (Math.max(parseInt(page), 1) - 1) * limit;
+
+  try {
+    // Get total count for pagination
+    // Good: Correctly gets total count.
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) as total FROM mon2mm_dictionary WHERE mon_word LIKE ? OR definition LIKE ?`,
+      [`%${query}%`, `%${query}%`]
+    );
+    const total = countRows[0].total;
+
+    // Get paginated results (limit/offset as literals)
+    // NOTE: SQL Injection Vulnerability due to string interpolation for LIMIT/OFFSET
+    const sql = `
+      SELECT * FROM mon2mm_dictionary WHERE
+        mon_word = ? OR
+        mon_word LIKE ? OR
+        mon_word LIKE ? OR
+        definition LIKE ?
+        ORDER BY CASE WHEN mon_word = ? THEN 1
+          WHEN mon_word LIKE ? THEN 2
+          WHEN mon_word LIKE ? THEN 3
+        END
+        LIMIT ? OFFSET ?;
+    `;
+    // Good: Correct number of parameters for the WHERE and ORDER BY clauses.
+    const [rows] = await pool.execute(
+      sql,
+      [ query, `${query}%`, `%${query}%`, `%${query}%`, query, `${query}%`, `%${query}%`, `${limit}`, `${offset}`]
+    );
+
+    res.json({
+      data: rows,
+      pagination: {
+        total,
+        page: Number(page), // Good: Ensuring page is a Number for the response.
+        pageSize: limit,    // Good: Using 'limit' for clarity.
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error in paginated search:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
 module.exports = {
   searchWords,
   getWordById,
   addWord,
   updateWord,
-  deleteWord, // New function ကို export လုပ်ပါ။
+  deleteWord,
+  paginatedSearchWords,
 };

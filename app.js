@@ -7,12 +7,6 @@ const mysql = require('mysql2/promise');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// routes folder ကနေ wordsRoutes ကို Import လုပ်မယ်။
-// Note: wordsRoutes ကို app.js မှာ app.use() နဲ့ သုံးဖို့ပဲ Import လုပ်ထားရမယ်။
-// Database connection pool ကို တခြားဖိုင်တွေကနေ လွယ်လွယ်ကူကူ Import လုပ်နိုင်အောင်
-// app.js ကနေပဲ Export လုပ်ပါမယ်။
-// const wordsRoutes = require('./routes/wordsRoutes'); // ဒီလိုင်းကို ခဏဖယ်ထားပါမယ်။ အောက်မှာ ပြန်ထည့်ပါမယ်။
-
 // Database Connection Pool ဖန်တီးခြင်း။
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -36,9 +30,7 @@ pool.getConnection()
     process.exit(1);
   });
 
-// Pool object ကို module.exports ကနေ export လုပ်ပါမယ်။
-// ဒါမှ controllers/wordsController.js ကနေ require() နဲ့ တိုက်ရိုက်ရယူနိုင်မှာပါ။
-// *** NEW CHANGE HERE ***
+
 module.exports = {
     app, // Express app instance
     pool // Database connection pool
@@ -49,8 +41,7 @@ app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
 
 // 3. API Routes တွေကို app မှာ Use လုပ်မယ်။
-// routes folder ကနေ wordsRoutes ကို Import လုပ်ပြီး app.use() လုပ်မယ်။
-const wordsRoutes = require('./routes/wordsRoutes'); // *** MOVED HERE ***
+const wordsRoutes = require('./routes/wordsRoutes');
 app.use('/api/words', wordsRoutes);
 
 
@@ -60,14 +51,8 @@ app.get('/', (req, res) => {
 });
 
 const cors = require('cors');
-// ...
-app.use(cors()); // Allow all origins for now (for development)
-// Production မှာတော့ သင့်ရဲ့ Frontend Domain တွေကိုပဲ ခွင့်ပြုဖို့ လိုပါမယ်။
-// app.use(cors({ origin: ['http://localhost:8080', 'https://yourwebsite.com'] }));
+app.use(cors()); 
 
-// Server ကို Start လုပ်ခြင်း။
-// app.js ကို direct run တာမဟုတ်ဘဲ, တခြား module ကနေ require လုပ်တဲ့အခါ app.listen မ run စေချင်တဲ့အတွက်
-// ဒီ listen logic ကို if condition ထဲ ထည့်ပါမယ်။
 if (require.main === module) {
   app.listen(port, () => {
     console.log(`Mon Dictionary Backend listening at http://localhost:${port}`);

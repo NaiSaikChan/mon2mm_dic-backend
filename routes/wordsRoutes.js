@@ -6,6 +6,7 @@ const wordsController = require('../controllers/wordsController');
 
 // Search endpoint
 router.get('/search', wordsController.searchWords);
+router.get('/paginated-search', wordsController.paginatedSearchWords);
 
 // Get word details by ID
 router.get('/:id', wordsController.getWordById);
