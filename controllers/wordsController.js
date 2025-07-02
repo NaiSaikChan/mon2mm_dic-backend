@@ -38,26 +38,55 @@ const searchWords = async (req, res) => {
 
 // *** Get word details by ID ***
 const getWordById = async (req, res) => {
-  const { id } = req.params; // URL parameter ကနေ ID ကို ရယူမယ် (e.g., /words/123)
+    const { id } = req.params;
+    try {
+        // Fetch from the updated mon2mm_dictionary view
+        // IMPORTANT: The new view will group definitions.
+        // For 'getWordById', you might want to fetch *all* definitions for that word,
+        // or just the first one for simple editing purposes.
+        // For now, we'll fetch all grouped data and take the first definition's pos_id for the form.
+        const [rows] = await pool.execute(
+            `SELECT
+                word_id, mon_word, pronunciation, word_language_id,
+                definition, example, definition_language_ids, pos_ids, -- Take the first pos_id from grouped
+                pos_ENnames, pos_Mmnames
+             FROM mon2mm_dictionary WHERE word_id = ?`,
+            [id]
+        );
 
-  try {
-    // Word ID နဲ့ ကိုက်ညီတဲ့ အသေးစိတ်အချက်အလက်တွေကို mon2mm_dictionary view ကနေပဲ ယူမယ်။
-    // သို့မဟုတ် လိုအပ်ရင် တခြား Tables (e.g., Synonym Table) တွေကိုပါ JOIN လုပ်နိုင်ပါတယ်။
-    const [rows] = await pool.execute(
-      `SELECT * FROM mon2mm_dictionary WHERE word_id = ?`, // Assuming 'word_id' is the primary key in your view/underlying table
-      [id]
-    );
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Word not found' });
+        }
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Word not found.' });
+        const word = rows[0];
+        // For the edit form, we need a single pos_id and definition_id.
+        // Assuming the first one from the grouped list for now for simplicity in the form.
+        // You might need to split `pos_ids` string and take the first one or manage multiple.
+        // For this simple form, we'll take the first pos_id and first definition text.
+        const definition_ids_array = word.definition_ids ? word.definition_ids.split(',').map(Number) : [];
+        const pos_ids_array = word.pos_ids ? word.pos_ids.split(',').map(Number) : [];
+        const definitions_array = word.definition ? word.definition.split('\n') : [];
+        const examples_array = word.example ? word.example.split('\n') : [];
+
+        res.json({
+            word_id: word.word_id,
+            mon_word: word.mon_word,
+            pronunciation: word.pronunciation,
+            word_language_id: word.word_language_id,
+            // For editing, we pick the first definition's ID, text, example, and POS ID
+            definition_id: definition_ids_array[0] || null, // Assuming you have definition_id in the view
+            definition: definitions_array[0] || '',
+            example: examples_array[0] || '',
+            definition_language_id: word.definition_language_ids ? word.definition_language_ids.split(',').map(Number)[0] : null,
+            pos_id: pos_ids_array[0] || null, // Pick the first POS ID for the form
+            pos_ENnames: word.pos_ENnames, // Still useful for display
+            pos_Mmnames: word.pos_Mmnames  // Still useful for display
+        });
+
+    } catch (error) {
+        console.error('Error fetching word by ID:', error);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }
-
-    res.json(rows[0]); // တစ်ခုတည်းသော Word Object ကို ပြန်ပို့မယ်။
-
-  } catch (error) {
-    console.error('Error fetching word by ID:', error);
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  }
 };
 
 
@@ -247,7 +276,7 @@ const paginatedSearchWords = async (req, res) => {
         ORDER BY CASE WHEN mon_word = ? THEN 1
           WHEN mon_word LIKE ? THEN 2
           WHEN mon_word LIKE ? THEN 3
-        END
+        ELSE 4 END
         LIMIT ? OFFSET ?;
     `;
     // Good: Correct number of parameters for the WHERE and ORDER BY clauses.

@@ -49,6 +49,8 @@ app.use('/api/words', wordsRoutes);
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+const posRoutes = require('./routes/posRoutes');
+app.use('/api/pos', posRoutes);
 
 // Basic Route (optional - for testing if server is up)
 app.get('/', (req, res) => {
