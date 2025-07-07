@@ -189,53 +189,60 @@ const deleteWord = async (req, res) => {
 };
 
 const paginatedSearchWords = async (req, res) => {
-  // Good: Default values for page and pageSize in destructuring.
-  const { query, page = 1, pageSize = 20 } = req.query;
+  const { query = '', page = 1, pageSize = 20, posId } = req.query;
 
-  if (!query) {
-    return res.status(400).json({ message: 'Search query is required.' });
-  }
-
-  // Good: Ensures page and pageSize are valid positive integers.
   const limit = Math.max(parseInt(pageSize), 1);
   const offset = (Math.max(parseInt(page), 1) - 1) * limit;
 
   try {
-    // Get total count for pagination
-    // Good: Correctly gets total count.
+    // Build WHERE clause and params
+    let whereClauses = [];
+    let params = [];
+    let orderParams = [];
+
+    // If query is not empty, add search conditions
+    if (query && query.trim() !== '') {
+      whereClauses.push('(mon_word = ? OR mon_word LIKE ? OR mon_word LIKE ? OR definition LIKE ?)');
+      params.push(query, `${query}%`, `%${query}%`, `%${query}%`);
+      orderParams = [query, `${query}%`, `%${query}%`];
+    }
+    // If pos is provided, add POS filter
+    if (posId) {
+      whereClauses.push('pos_ids = ?');
+      params.push(posId);
+    }
+    // If no query and no pos, return empty result (or optionally all words if dataset is small)
+    if (whereClauses.length === 0) {
+      // Option 1: Return all words (uncomment next two lines if dataset is small)
+      // whereClauses.push('1'); // always true
+      // params = [];
+      // Option 2: Return empty result for large datasets
+      return res.json({ data: [], pagination: { total: 0, page: Number(page), pageSize: limit, totalPages: 0 } });
+    }
+    // Count query
     const [countRows] = await pool.execute(
-      `SELECT COUNT(*) as total FROM monbur_dic WHERE mon_word LIKE ? OR definition LIKE ?`,
-      [`%${query}%`, `%${query}%`]
+      `SELECT COUNT(*) as total FROM monbur_dic WHERE ${whereClauses.join(' AND ')}`,
+      params
     );
     const total = countRows[0].total;
 
-    // Get paginated results (limit/offset as literals)
-    // NOTE: SQL Injection Vulnerability due to string interpolation for LIMIT/OFFSET
-    const sql = `
-      SELECT * FROM monbur_dic WHERE
-        mon_word = ?
-        OR mon_word LIKE ?
-        OR mon_word LIKE ?
-        OR definition LIKE ?
-        ORDER BY CASE WHEN mon_word = ? THEN 1
-          WHEN mon_word LIKE ? THEN 2
-          WHEN mon_word LIKE ? THEN 3
-        ELSE 4
-        END
-        LIMIT ? OFFSET ?;
-    `;
-    // Good: Correct number of parameters for the WHERE and ORDER BY clauses.
+    // Data query
+    let sql = `SELECT * FROM monbur_dic WHERE ${whereClauses.join(' AND ')}`;
+    if (orderParams.length > 0) {
+      sql += ` ORDER BY CASE WHEN mon_word = ? THEN 1 WHEN mon_word LIKE ? THEN 2 WHEN mon_word LIKE ? THEN 3 ELSE 4 END`;
+    }
+    sql += ` LIMIT ? OFFSET ?;`;
     const [rows] = await pool.execute(
       sql,
-      [ query, `${query}%`, `%${query}%`, `%${query}%`, query, `${query}%`, `%${query}%`, `${limit}`, `${offset}`]
+      [...params, ...orderParams, `${limit}`, `${offset}`]
     );
 
     res.json({
       data: rows,
       pagination: {
         total,
-        page: Number(page), // Good: Ensuring page is a Number for the response.
-        pageSize: limit,    // Good: Using 'limit' for clarity.
+        page: Number(page),
+        pageSize: limit,
         totalPages: Math.ceil(total / limit)
       }
     });
