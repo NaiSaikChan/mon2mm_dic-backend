@@ -11,10 +11,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key'; // CHA
 // 1. User Registration (Optional for now, but good to have)
 // You might only manually add admin users for this dictionary.
 const registerUser = async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, email } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
+    if (!username || !password || !email) {
+        return res.status(400).json({ message: 'Username, password, and email are required.' });
     }
 
     try {
@@ -24,8 +24,8 @@ const registerUser = async (req, res) => {
 
         // Insert user into database
         const [result] = await pool.execute(
-            `INSERT INTO User (username, password_hash, role) VALUES (?, ?, ?)`,
-            [username, password_hash, role || 'user'] // Default role to 'user' if not specified
+            `INSERT INTO User (username, password_hash, role, email) VALUES (?, ?, ?, ?)`,
+            [username, password_hash, role || 'user', email]
         );
 
         res.status(201).json({ message: 'User registered successfully!', userId: result.insertId });
@@ -71,7 +71,15 @@ const loginUser = async (req, res) => {
 
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }); // Token expires in 1 hour
 
-        res.json({ message: 'Login successful!', token });
+        res.json({
+            token,
+            user: {
+                id: payload.userId.toString(),
+                username: payload.username,
+                email: user.email || '', // If email exists in the User table
+                role: payload.role
+            }
+        });
 
     } catch (error) {
         console.error('Error logging in user:', error);

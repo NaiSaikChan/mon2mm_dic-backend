@@ -52,6 +52,10 @@ app.use('/api/auth', authRoutes);
 const posRoutes = require('./routes/posRoutes');
 app.use('/api/pos', posRoutes);
 
+// Add favorites routes
+const favoritesRoutes = require('./routes/favoritesRoutes');
+app.use('/api/favorites', favoritesRoutes);
+
 // Basic Route (optional - for testing if server is up)
 app.get('/', (req, res) => {
   res.send('Hello from Mon Dictionary Backend!');
