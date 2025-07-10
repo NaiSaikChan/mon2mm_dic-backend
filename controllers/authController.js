@@ -1,12 +1,13 @@
 // controllers/authController.js
 
-const { pool } = require('../app'); // Make sure pool is accessible from req.pool or via module.exports
+const { pool } = require('../app');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Secret key for JWT. IMPORTANT: Use a strong, random key in production and keep it secure.
-// For production, this should be stored in environment variables (e.g., process.env.JWT_SECRET)
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key'; // CHANGE THIS IN PRODUCTION
+const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
+
+// In-memory store for refresh tokens (key: userId, value: refreshToken)
+const refreshTokensStore = {};
 
 // 1. User Registration (Optional for now, but good to have)
 // You might only manually add admin users for this dictionary.
@@ -70,9 +71,14 @@ const loginUser = async (req, res) => {
         };
 
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }); // Token expires in 1 hour
+        const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); // Refresh token expires in 1 days
+
+        // Save refreshToken in-memory store
+        refreshTokensStore[user.user_id] = refreshToken;
 
         res.json({
-            token,
+            token, // Access token
+            refreshToken, // Refresh token
             user: {
                 id: payload.userId.toString(),
                 username: payload.username,
@@ -87,7 +93,41 @@ const loginUser = async (req, res) => {
     }
 };
 
+// 3. Refresh Token Endpoint
+const refreshAccessToken = (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ message: 'No refresh token provided.' });
+
+    try {
+        const decoded = jwt.verify(refreshToken, JWT_SECRET);
+        // Check if refreshToken matches the one in store
+        if (refreshTokensStore[decoded.userId] !== refreshToken) {
+            return res.status(403).json({ message: 'Invalid refresh token.' });
+        }
+        // Issue new access token
+        const newAccessToken = jwt.sign(
+            { userId: decoded.userId, username: decoded.username, role: decoded.role },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+        res.json({ token: newAccessToken });
+    } catch (error) {
+        return res.status(403).json({ message: 'Invalid or expired refresh token.' });
+    }
+};
+
+// 4. Logout (optional, to remove refresh token)
+const logoutUser = (req, res) => {
+    const { userId } = req.body;
+    if (userId && refreshTokensStore[userId]) {
+        delete refreshTokensStore[userId];
+    }
+    res.json({ message: 'Logged out successfully.' });
+};
+
 module.exports = {
     registerUser,
     loginUser,
+    refreshAccessToken,
+    logoutUser
 };
