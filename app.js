@@ -61,6 +61,11 @@ app.get('/', (req, res) => {
   res.send('Hello from Mon Dictionary Backend!');
 }); 
 
+// Admin
+const adminWordRoutes = require('./routes/adminWordRoutes');
+app.use('/api/admin', adminWordRoutes);
+
+
 if (require.main === module) {
   app.listen(port, () => {
     console.log(`Mon Dictionary Backend listening at http://localhost:${port}`);

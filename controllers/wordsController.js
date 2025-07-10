@@ -12,11 +12,11 @@ const searchWords = async (req, res) => {
 
   try {
     const [rows] = await pool.execute(
-      `SELECT * FROM monbur_dic WHERE
+      `SELECT * FROM monburmese_dic WHERE
         mon_word = ? OR
         mon_word LIKE ? OR
         mon_word LIKE ? OR
-        definition LIKE ?
+        definitions LIKE ?
         ORDER BY CASE WHEN mon_word = ? THEN 1
           WHEN mon_word LIKE ? THEN 2
           WHEN mon_word LIKE ? THEN 3
@@ -27,6 +27,19 @@ const searchWords = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'No matching words found.' });
     }
+
+    // Parse JSON columns for each row
+        const parsedRows = rows.map(row => ({
+          ...row,
+          pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+          pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+          pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+          synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+          definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+          definitions: uniqueArray(safeJsonParse(row.definitions)),
+          examples: uniqueArray(safeJsonParse(row.examples)),
+          category_id: uniqueArray(safeJsonParse(row.category_id))
+        }));
 
     res.json(rows);
 
@@ -41,15 +54,33 @@ const getWordById = async (req, res) => {
     const { id } = req.params; // This is word_id
     try {
         // Fetch word details from monbur_dic only
-        const [wordRows] = await pool.execute(
-            `SELECT * FROM monbur_dic WHERE word_id = ?`,
-            [id]
+        const [rows] = await pool.execute(
+          `SELECT * FROM monburmese_dic WHERE word_id = ?`,
+          [id]
         );
-        if (wordRows.length === 0) {
-            return res.status(404).json({ message: 'Word not found' });
+
+        if (rows.length === 0) {
+          return res.status(404).json({ message: 'Word not found' });
         }
-        // Return the word data directly (no pagination, no extra tables)
-        res.json(wordRows);
+
+        // Parse JSON columns for each row
+        const parsedRows = rows.map(row => ({
+          ...row,
+          word_id: uniqueArray(safeJsonParse(row.word_id)),
+          mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+          pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+          pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+          pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+          pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+          synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+          definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+          definitions: uniqueArray(safeJsonParse(row.definitions)),
+          examples: uniqueArray(safeJsonParse(row.examples)),
+          category_id: uniqueArray(safeJsonParse(row.category_id))
+        })
+      );
+
+        res.json(parsedRows);
     } catch (error) {
         console.error('Error fetching word by ID:', error);
         res.status(500).json({ message: 'Internal Server Error', error: error.message });
@@ -59,7 +90,7 @@ const getWordById = async (req, res) => {
 
 // *** Add a new word with its definition ***
 const addWord = async (req, res) => {
-    const { mon_word, pronunciation, word_language_id, definition, example, definition_language_id, pos_id, synonyms } = req.body;
+    const { mon_word, pronunciation, word_language_id, definition_text, example_text, definition_language_id, pos_id, synonyms, category_id } = req.body;
 
     try {
         await pool.query('START TRANSACTION');
@@ -73,8 +104,8 @@ const addWord = async (req, res) => {
 
         // 2. Insert into Definition table
         const [definitionResult] = await pool.execute(
-            `INSERT INTO Definition (word_id, definition, example, language_id, pos_id) VALUES (?, ?, ?, ?, ?)`,
-            [word_id, definition, example, definition_language_id, pos_id]
+            `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?)`,
+            [word_id, definition_text, example_text, definition_language_id, pos_id, category_id]
         );
 
         // 3. Insert into Synonym table (if synonyms are provided)
@@ -99,7 +130,7 @@ const addWord = async (req, res) => {
 // *** Update an existing word and its definition ***
 const updateWord = async (req, res) => {
     const { id } = req.params; // This is word_id
-    const { mon_word, pronunciation, word_language_id, definition, example, definition_language_id, pos_id, definition_id, synonyms } = req.body;
+    const { mon_word, pronunciation, word_language_id, definition_text, example_text, definition_language_id, pos_id, definition_id, synonyms } = req.body;
 
     if (!definition_id) {
         return res.status(400).json({ message: 'Definition ID is required to update definition.' });
@@ -117,7 +148,7 @@ const updateWord = async (req, res) => {
         // 2. Update Definition table
         const [definitionUpdateResult] = await pool.execute(
             `UPDATE Definition SET definition = ?, example = ?, language_id = ?, pos_id = ? WHERE definition_id = ? AND word_id = ?`,
-            [definition, example, definition_language_id, pos_id, definition_id, id]
+            [definition_text, example_text, definition_language_id, pos_id, definition_id, id]
         );
 
         // 3. Update Synonyms: Simplest approach is to delete all existing and re-insert
@@ -251,6 +282,21 @@ const paginatedSearchWords = async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };
+
+function safeJsonParse(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val !== 'string') return val; // Already parsed
+  try {
+    return JSON.parse(val);
+  } catch {
+    return val; // Return as-is if not valid JSON
+  }
+}
+
+function uniqueArray(arr) {
+  if (!Array.isArray(arr)) return arr;
+  return [...new Set(arr)];
+}
 
 module.exports = {
   searchWords,

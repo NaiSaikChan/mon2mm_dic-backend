@@ -10,4 +10,10 @@ router.post('/register', authController.registerUser);
 // User login
 router.post('/login', authController.loginUser);
 
+// Refresh access token
+router.post('/refresh-token', authController.refreshAccessToken);
+
+// User logout
+router.post('/logout', authController.logoutUser);
+
 module.exports = router;
