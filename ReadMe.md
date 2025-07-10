@@ -1,6 +1,3 @@
-Here's a well-structured `README.md` in Markdown format for your **Mon Dictionary Backend API**:
-
-```markdown
 # Mon Dictionary Backend API
 
 This backend provides a RESTful API for managing a Mon language dictionary, including authentication, CRUD operations for words, and admin/statistics endpoints.
@@ -349,6 +346,3 @@ All endpoints return appropriate HTTP status codes and error messages.
 - On logout, clear your browser storage and tokens for security.
 - For production, use HTTPS and secure your JWT secrets.
 - For further details, see the code or contact the API maintainer.
-```
-
-Would you like me to generate this as a downloadable `README.md` file for you?
