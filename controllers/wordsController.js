@@ -104,7 +104,7 @@ const addWord = async (req, res) => {
 
         // 2. Insert into Definition table
         const [definitionResult] = await pool.execute(
-            `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
             [word_id, definition_text, example_text, definition_language_id, pos_id, category_id]
         );
 
@@ -233,32 +233,36 @@ const paginatedSearchWords = async (req, res) => {
 
     // If query is not empty, add search conditions
     if (query && query.trim() !== '') {
-      whereClauses.push('(mon_word = ? OR mon_word LIKE ? OR mon_word LIKE ? OR definition LIKE ?)');
+      whereClauses.push('(mon_word = ? OR mon_word LIKE ? OR mon_word LIKE ? OR definitions LIKE ?)');
       params.push(query, `${query}%`, `%${query}%`, `%${query}%`);
       orderParams = [query, `${query}%`, `%${query}%`];
     }
     // If pos is provided, add POS filter
     if (posId) {
-      whereClauses.push('pos_ids = ?');
-      params.push(posId);
+      whereClauses.push('pos_ids LIKE ?');
+      params.push(`%${posId}%`);
     }
     // If no query and no pos, return empty result (or optionally all words if dataset is small)
     if (whereClauses.length === 0) {
-      // Option 1: Return all words (uncomment next two lines if dataset is small)
-      // whereClauses.push('1'); // always true
-      // params = [];
-      // Option 2: Return empty result for large datasets
-      return res.json({ data: [], pagination: { total: 0, page: Number(page), pageSize: limit, totalPages: 0 } });
+      return res.json({
+        data: [],
+        pagination: {
+          currentPage: parseInt(page),
+          pageSize: limit,
+          totalItems: 0,
+          totalPages: 0
+        }
+      });
     }
-    // Count query
-    const [countRows] = await pool.execute(
-      `SELECT COUNT(*) as total FROM monbur_dic WHERE ${whereClauses.join(' AND ')}`,
-      params
-    );
-    const total = countRows[0].total;
+
+    // Count query for pagination
+    const countSql = `SELECT COUNT(*) as total FROM monburmese_dic WHERE ${whereClauses.join(' AND ')}`;
+    const [countResult] = await pool.execute(countSql, params);
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
 
     // Data query
-    let sql = `SELECT * FROM monbur_dic WHERE ${whereClauses.join(' AND ')}`;
+    let sql = `SELECT * FROM monburmese_dic WHERE ${whereClauses.join(' AND ')}`;
     if (orderParams.length > 0) {
       sql += ` ORDER BY CASE WHEN mon_word = ? THEN 1 WHEN mon_word LIKE ? THEN 2 WHEN mon_word LIKE ? THEN 3 ELSE 4 END`;
     }
@@ -268,13 +272,31 @@ const paginatedSearchWords = async (req, res) => {
       [...params, ...orderParams, `${limit}`, `${offset}`]
     );
 
+    // Parse JSON columns for each row
+    const parsedRows = rows.map(row => ({
+      ...row,
+      word_id: uniqueArray(safeJsonParse(row.word_id)),
+      mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+      pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+      pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+      pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+      pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+      synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+      definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+      definitions: uniqueArray(safeJsonParse(row.definitions)),
+      examples: uniqueArray(safeJsonParse(row.examples)),
+      category_id: uniqueArray(safeJsonParse(row.category_id))
+    }));
+
     res.json({
-      data: rows,
+      data: parsedRows,
       pagination: {
-        total,
-        page: Number(page),
+        currentPage: parseInt(page),
         pageSize: limit,
-        totalPages: Math.ceil(total / limit)
+        totalItems,
+        totalPages,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPreviousPage: parseInt(page) > 1
       }
     });
   } catch (error) {

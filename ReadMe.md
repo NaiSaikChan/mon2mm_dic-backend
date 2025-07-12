@@ -121,7 +121,7 @@ POST /api/auth/logout
 GET /api/words/search?query=xxx
 ```
 
-Returns an array of word objects matching the query.
+Returns an array of word objects matching the query as the Get word by ID.
 
 ---
 
@@ -137,6 +137,7 @@ GET /api/words/:id
 [
   {
     "word_id": 4340,
+    "word_languageId": 2,
     "mon_word": "ဆ",
     "pronunciation": "ချ",
     "pos_ids": [1, 7, 6, 2, 4],
@@ -144,6 +145,7 @@ GET /api/words/:id
     "pos_Mmnames": ["နာမ်", "သမ္ဗန္ဓ", "ဝိဘတ်", "နာမ်စား", "ကြိယာ"],
     "synonyms_text": [null],
     "definition_ids": [5147, 5148, 5149, 5150, 5151],
+    "def_languageId": [3],
     "definitions": [
       "အဆ။",
       "သမျှ။",
@@ -175,26 +177,71 @@ GET /api/words/paginated-search?query=xxx&page=1&pageSize=1
 
 ```json
 {
-  "data": [
-    {
-      "word_id": 1051,
-      "mon_word": "ကဵု",
-      "pronunciation": "",
-      "pos_ids": "3, 4, 9",
-      "pos_ENnames": "adjective, unclassified, verb",
-      "pos_Mmnames": "ကြိယာ, နာမဝိသေသန, ပစ္စည်း",
-      "synonyms_text": null,
-      "definition_ids": "1260, 1261, 1262, 1263, 1264",
-      "definition": "ပေးသည်။\n,နှင့်။\n...",
-      "example": "“အဲကဵုကုဍေံ သြန်စှ်ဒကေဝ်ရ။” = “သူ့အား ငွေတစ်ဆယ်ကျပ် ကျွန်မပေးသည်။”\n..."
+    "data": [
+        {
+            "word_id": 1051,
+            "word_languageId": 2,
+            "mon_word": "ကဵု",
+            "pronunciation": "",
+            "pos_ids": [
+                4,
+                3,
+                9
+            ],
+            "pos_ENnames": [
+                "verb",
+                "adjective",
+                "unclassified"
+            ],
+            "pos_Mmnames": [
+                "ကြိယာ",
+                "နာမဝိသေသန",
+                "ပစ္စည်း"
+            ],
+            "synonyms_text": [
+                null
+            ],
+            "definition_ids": [
+                7771,
+                7772,
+                7773,
+                7774,
+                7775
+            ],
+            "def_languageId": [
+                3,
+                3,
+                3,
+                3,
+                3
+            ],
+            "definitions": [
+                "ပေးသည်။",
+                "နှင့်။",
+                "၁။ (ကြိရှေ့ဆက်) ဖြစ်စေခြင်းကိုပြသည်။ ကာရိုက်ကြိယာဖြစ်စေသည်။",
+                "၂။ (ကြိနောက်ဆက်) သူတစ်ပါးအတွက် ဆောင်ရွက်သည့်သဘောကို ပြသောစကားလုံး။",
+                "၃။ (ကြိဝိဖြစ်စေသော ကြိရှေ့ဆက်)"
+            ],
+            "examples": [
+                "“အဲကဵုကုဍေံ သြန်စှ်ဒကေဝ်ရ။” = “သူ့အား ငွေတစ်ဆယ်ကျပ် ကျွန်မပေးသည်။”",
+                "ပုၚ်ကဵုသွ = ထမင်းနှင့်ဟင်း။ မိကဵုမ = အမိနှင့်အဖ။",
+                "ကဵုစဴ = ပြန်စေသည်။ ကဵုလလံသွာ = ပျောက်ပြယ်စေသည်။ ကဵုကၠောန် = လုပ်စေသည်။",
+                "ဟီုကဵု = ပြောပေးသည်။ || ကၠောန်ကဵု = လုပ်ပေးသည်။",
+                "“ပတၠသမ္တီ သ္ၚဳကဵုဂၠိၚ် ညာတ်ကဵုသ္ၚောဲညိ။” = “အသိဉာဏ်ရှိသူဖြစ်လျက် အရှည်ကိုကြည့်၍ အဝေးကိုမြင်နိုင်ပါစေ။” (ကဵု × ဂၠိၚ်) “အာကဵုပြဟ်ရ။” = “မြန်မြန်သွားပါ။” (ကဵု × ပြဟ်)"
+            ],
+            "category_id": [
+                null
+            ]
+        }
+    ],
+    "pagination": {
+        "currentPage": 1,
+        "pageSize": 1,
+        "totalItems": 139,
+        "totalPages": 139,
+        "hasNextPage": true,
+        "hasPreviousPage": false
     }
-  ],
-  "pagination": {
-    "total": 138,
-    "page": 1,
-    "pageSize": 1,
-    "totalPages": 138
-  }
 }
 ```
 
@@ -206,32 +253,7 @@ GET /api/words/paginated-search?query=xxx&page=1&pageSize=1
 GET /paginated-search?posId=1
 ```
 
-**Response:**
-
-```json
-{
-  "data": [
-    {
-      "word_id": 14,
-      "mon_word": "ကကၠဴ",
-      "pronunciation": "",
-      "pos_ids": "1",
-      "pos_ENnames": "noun",
-      "pos_Mmnames": "နာမ်",
-      "synonyms_text": null,
-      "definition_ids": "17",
-      "definition": "ငါးပျံ။\n",
-      "example": "-\n"
-    }
-  ],
-  "pagination": {
-    "total": 5777,
-    "page": 1,
-    "pageSize": 20,
-    "totalPages": 289
-  }
-}
-```
+Response: Same as the Paginated Search/Filter Words.
 
 ---
 
@@ -290,7 +312,7 @@ GET /api/favorites
 ```
 DELETE /api/favorites/:id
 ```
-
+id= word_id
 ---
 
 ### Update Favorite
@@ -298,7 +320,7 @@ DELETE /api/favorites/:id
 ```
 PATCH /api/favorites/:id
 ```
-
+id= word_id
 **Request:**
 
 ```json
@@ -352,8 +374,22 @@ POST /api/admin/words
 PUT /api/admin/words/:id
 ```
 
-Same request format as Add Word, with `definition_id`.
+**Request:**
 
+```json
+{
+    "mon_word": "word",
+    "pronunciation": "",
+    "word_language_id": 1,
+    "definition_id": 28657,
+    "definition_language_id": 2,
+    "definition_text": "definition_text",
+    "example_text": "example_text",
+    "pos_id": 5,
+    "synonyms": [{ "text": "synonym1" }],
+}
+```
+id= word_id
 ---
 
 ### Delete Word
@@ -361,7 +397,7 @@ Same request format as Add Word, with `definition_id`.
 ```
 DELETE /api/admin/words/:id
 ```
-
+id= word_id
 ---
 
 ## 📊 Statistics
