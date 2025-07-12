@@ -320,6 +320,68 @@ function uniqueArray(arr) {
   return [...new Set(arr)];
 }
 
+// Get random words for featured section
+const getRandomWords = async (req, res) => {
+  const count = Math.max(parseInt(req.query.count) || 3, 1);
+  try {
+    // Get total word count
+    const [countRows] = await pool.execute('SELECT COUNT(*) as total FROM monburmese_dic');
+    const total = countRows[0].total;
+    if (total === 0) return res.json([]);
+
+    // Generate unique random IDs
+    const ids = new Set();
+    while (ids.size < count && ids.size < total) {
+      ids.add(Math.floor(Math.random() * total) + 1);
+    }
+    const idList = Array.from(ids);
+    if (idList.length === 0) return res.json([]);
+
+    // Fetch words by IDs
+    const [rows] = await pool.query(
+      `SELECT * FROM monburmese_dic WHERE word_id IN (${idList.map(() => '?').join(',')})`,
+      idList
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching random words:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+// Get word of the day
+const getWordOfTheDay = async (req, res) => {
+  try {
+    // Get total word count
+    const [countRows] = await pool.execute('SELECT COUNT(*) as total FROM monburmese_dic');
+    const total = countRows[0].total;
+    if (total === 0) return res.json({});
+
+    // Use date as seed for deterministic word of the day
+    const today = new Date();
+    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    const wordId = (seed % total) + 1;
+
+    const [rows] = await pool.execute('SELECT * FROM monburmese_dic WHERE word_id = ?', [wordId]);
+    if (rows.length === 0) return res.json({});
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching word of the day:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+// Get all categories
+const getCategories = async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM categoryhierarchy');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
 module.exports = {
   searchWords,
   getWordById,
@@ -327,4 +389,7 @@ module.exports = {
   updateWord,
   deleteWord,
   paginatedSearchWords,
+  getRandomWords,
+  getWordOfTheDay,
+  getCategories,
 };

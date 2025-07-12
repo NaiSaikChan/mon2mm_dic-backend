@@ -8,6 +8,8 @@ const { authenticateToken, authorizeRoles } = require('../middleware/authMiddlew
 // Search endpoint
 router.get('/search', wordsController.searchWords);
 router.get('/paginated-search', wordsController.paginatedSearchWords);
+router.get('/random', wordsController.getRandomWords);
+router.get('/word-of-the-day', wordsController.getWordOfTheDay);
 router.get('/:id', wordsController.getWordById);
 
 // *** Add a new word ***

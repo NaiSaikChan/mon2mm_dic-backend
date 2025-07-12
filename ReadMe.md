@@ -281,6 +281,45 @@ GET /api/pos/
 
 ---
 
+## Get word of the day
+```
+GET /api/words/word-of-the-day
+```
+Response: Same as the Paginated Search/Filter Words.
+
+---
+
+## Get random words for featured section
+```
+GET /api/words/random?count=3
+```
+Response: Same as the Paginated Search/Filter Words.
+
+---
+
+## Get categories
+```
+GET /api/categories
+```
+**Response** 
+Returns all categories from categoryhierarchy view.
+```json
+[
+    {
+        "category_id": 2,
+        "en_category_name": "Inanimate Objects/Things",
+        "mm_category_name": "သက်မဲ့များ/အရာဝတ္ထုများ",
+        "mon_category_name": null,
+        "parent_category_id": null,
+        "level": 0,
+        "en_path": "Inanimate Objects/Things",
+        "mm_path": "သက်မဲ့များ/အရာဝတ္ထုများ"
+    },...
+]
+```
+
+---
+
 ### User Favorite
 
 ```

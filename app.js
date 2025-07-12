@@ -49,8 +49,13 @@ app.use('/api/words', wordsRoutes);
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+
 const posRoutes = require('./routes/posRoutes');
 app.use('/api/pos', posRoutes);
+
+// Add categories routes
+const categoriesRoutes = require('./routes/categoriesRoutes');
+app.use('/api/categories', categoriesRoutes);
 
 // Add favorites routes
 const favoritesRoutes = require('./routes/favoritesRoutes');
