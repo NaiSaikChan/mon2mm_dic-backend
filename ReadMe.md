@@ -384,51 +384,81 @@ GET /api/admin/words?page=1&pageSize=20&query=xxx&posId=4
 ---
 
 ### Add Word
-
-```
-POST /api/admin/words
-```
-
-**Request:**
-
-```json
-{
-  "mon_word": "word",
-  "pronunciation": "",
-  "word_language_id": 1,
-  "definition_text": "definition",
-  "example_text": "example",
-  "definition_language_id": 1,
-  "pos_id": 4,
-  "synonyms": [{ "text": "synonym1" }],
-  "category_id": null
-}
-```
+Here are the endpoint details and request body formats for both AddWord and UpdateWord:
 
 ---
 
-### Update Word
+### 1. AddWord Endpoint
 
-```
-PUT /api/admin/words/:id
-```
+- **Endpoint:**  
+  `POST /api/words`
 
-**Request:**
-
+- **Request Body Example:**
 ```json
 {
-    "mon_word": "word",
-    "pronunciation": "",
-    "word_language_id": 1,
-    "definition_id": 28657,
-    "definition_language_id": 2,
-    "definition_text": "definition_text",
-    "example_text": "example_text",
-    "pos_id": 5,
-    "synonyms": [{ "text": "synonym1" }],
+  "mon_word": "example",
+  "pronunciation": "ɛɡˈzæmpəl",
+  "word_language_id": 1,
+  "definitions": [
+    {
+      "definition_text": "A thing characteristic of its kind.",
+      "example_text": "This is an example sentence.",
+      "definition_language_id": 1,
+      "pos_id": 2,
+      "category_id": 3
+    }
+  ],
+  "synonyms": ["sample", "instance"],
+  "category_id": 3
 }
 ```
-id= word_id
+- **Notes:**
+  - `mon_word` (string) and at least one `definitions` entry (array) are required.
+  - Each definition object does not need a `definition_id` (it will be created).
+  - `synonyms` is an array of strings (optional).
+  - `category_id` is optional if not used in your logic.
+
+---
+
+### 2. UpdateWord Endpoint
+
+- **Endpoint:**  
+  `PUT /api/words/:id`
+
+- **Request Body Example:**
+```json
+{
+  "mon_word": "example",
+  "pronunciation": "ɛɡˈzæmpəl",
+  "word_language_id": 1,
+  "definitions": [
+    {
+      "definition_id": 10,
+      "definition_text": "A thing characteristic of its kind.",
+      "example_text": "This is an updated example.",
+      "definition_language_id": 1,
+      "pos_id": 2,
+      "category_id": 3
+    },
+    {
+      "definition_text": "A new definition.",
+      "example_text": "Another example.",
+      "definition_language_id": 1,
+      "pos_id": 2,
+      "category_id": 3
+    }
+  ],
+  "synonyms": ["sample", "instance", "illustration"],
+  "category_id": 3
+}
+```
+- **Notes:**
+  - `mon_word` (string) and at least one `definitions` entry (array) are required.
+  - For existing definitions, include `definition_id` to update.
+  - For new definitions, omit `definition_id` (they will be inserted).
+  - `synonyms` array will replace all synonyms for the word.
+  - `category_id` is optional if not used in your logic.
+
 ---
 
 ### Delete Word

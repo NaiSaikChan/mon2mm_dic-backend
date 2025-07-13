@@ -66,7 +66,7 @@ const updateFavorite = async (req, res) => {
     try {
         const [result] = await pool.execute(
             `UPDATE Favorite SET notes = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND word_id = ?`,
-            [notes || null, metadata ? JSON.stringify(metadata) : null, userId, wordId]
+            [notes || null, metadata || null, userId, wordId]
         );
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Favorite not found.' });

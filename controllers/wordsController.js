@@ -90,89 +90,189 @@ const getWordById = async (req, res) => {
 
 // *** Add a new word with its definition ***
 const addWord = async (req, res) => {
-    const { mon_word, pronunciation, word_language_id, definition_text, example_text, definition_language_id, pos_id, synonyms, category_id } = req.body;
+    const { mon_word, pronunciation, word_language_id, definitions, synonyms, category_id } = req.body;
 
+    // Validate input
+    if (!mon_word || !Array.isArray(definitions) || definitions.length === 0) {
+        return res.status(400).json({ error: 'mon_word and at least one definition are required' });
+    }
+
+    let connection;
     try {
-        await pool.query('START TRANSACTION');
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
         // 1. Insert into Word table
-        const [wordResult] = await pool.execute(
+        const [wordResult] = await connection.execute(
             `INSERT INTO Word (word, pronunciation, language_id) VALUES (?, ?, ?)`,
             [mon_word, pronunciation, word_language_id]
         );
         const word_id = wordResult.insertId;
 
-        // 2. Insert into Definition table
-        const [definitionResult] = await pool.execute(
-            `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
-            [word_id, definition_text, example_text, definition_language_id, pos_id, category_id]
-        );
-
-        // 3. Insert into Synonym table (if synonyms are provided)
-        if (synonyms && Array.isArray(synonyms) && synonyms.length > 0) {
-            const synonymValues = synonyms.map(s => [word_id, s.text]);
-            await pool.query(
-                `INSERT INTO Synonym (word_id, synonym) VALUES ?`,
-                [synonymValues] // Use array of arrays for bulk insert
-            );
+        // 2. Insert all definitions (array of objects)
+        let definitionIds = [];
+        if (definitions && Array.isArray(definitions)) {
+            for (const def of definitions) {
+                const { definition_text, example_text, definition_language_id, pos_id, category_id } = def;
+                const [defResult] = await connection.execute(
+                    `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [word_id, definition_text, example_text, definition_language_id, pos_id, category_id]
+                );
+                definitionIds.push(defResult.insertId);
+            }
         }
 
-        await pool.query('COMMIT');
-        res.status(201).json({ message: 'Word, Definition, and Synonyms added successfully', word_id, definition_id: definitionResult.insertId });
+        // 3. Insert synonyms (array of strings)
+        if (synonyms && Array.isArray(synonyms) && synonyms.length > 0) {
+            const synonymValues = synonyms
+                .filter(s => typeof s === 'string' && s.trim() !== '')
+                .map(s => [word_id, word_language_id, s]);
+            if (synonymValues.length > 0) {
+                await connection.query(
+                    `INSERT INTO Synonym (word_id, language_id, synonym) VALUES ?`,
+                    [synonymValues]
+                );
+            }
+        }
+
+        await connection.commit();
+
+        // 4. Return created word with definitions and synonyms
+        const [rows] = await connection.query(
+            `SELECT * FROM monburmese_dic
+             WHERE word_id = ?`,
+            [word_id]
+        );
+
+        // Parse JSON columns for each row
+        const parsedRows = rows.map(row => ({
+          ...row,
+          word_id: uniqueArray(safeJsonParse(row.word_id)),
+          mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+          pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+          pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+          pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+          pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+          synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+          definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+          definitions: uniqueArray(safeJsonParse(row.definitions)),
+          examples: uniqueArray(safeJsonParse(row.examples)),
+          category_id: uniqueArray(safeJsonParse(row.category_id))
+        })
+      );
+
+        res.status(201).json({ message: 'Word, Definitions, and Synonyms added successfully', word_id, definition_ids: definitionIds, data: parsedRows });
 
     } catch (error) {
-        await pool.query('ROLLBACK');
+        if (connection) await connection.rollback();
         console.error('Error adding word:', error);
         res.status(500).json({ message: 'Failed to add word.', error: error.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
-// *** Update an existing word and its definition ***
+// *** Update an existing word and its definitions/synonyms (array-based logic) ***
 const updateWord = async (req, res) => {
-    const { id } = req.params; // This is word_id
-    const { mon_word, pronunciation, word_language_id, definition_text, example_text, definition_language_id, pos_id, definition_id, synonyms } = req.body;
+    const { id } = req.params;
+    const { mon_word, pronunciation, word_language_id, definitions, synonyms, category_id } = req.body;
 
-    if (!definition_id) {
-        return res.status(400).json({ message: 'Definition ID is required to update definition.' });
+    // Validate input
+    if (!mon_word || !Array.isArray(definitions) || definitions.length === 0) {
+        return res.status(400).json({ error: 'mon_word and at least one definition are required' });
     }
 
+    let connection;
     try {
-        await pool.query('START TRANSACTION');
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-        // 1. Update Word table
-        const [wordUpdateResult] = await pool.execute(
+        // 1. Check if word exists
+        const [wordRows] = await connection.execute(
+            'SELECT * FROM Word WHERE word_id = ?',
+            [id]
+        );
+        if (wordRows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Word not found' });
+        }
+
+        // 2. Update main word fields
+        await connection.execute(
             `UPDATE Word SET word = ?, pronunciation = ?, language_id = ? WHERE word_id = ?`,
             [mon_word, pronunciation, word_language_id, id]
         );
 
-        // 2. Update Definition table
-        const [definitionUpdateResult] = await pool.execute(
-            `UPDATE Definition SET definition = ?, example = ?, language_id = ?, pos_id = ? WHERE definition_id = ? AND word_id = ?`,
-            [definition_text, example_text, definition_language_id, pos_id, definition_id, id]
+
+        // 3. Update or insert definitions (partial update logic)
+        let definitionIds = [];
+        for (const def of definitions) {
+            const { definition_id, definition_text, example_text, definition_language_id, pos_id, category_id } = def;
+            if (definition_id) {
+                // Update existing definition
+                await connection.execute(
+                    `UPDATE Definition SET definition = ?, example = ?, language_id = ?, pos_id = ?, category_id = ? WHERE definition_id = ? AND word_id = ?`,
+                    [definition_text, example_text, definition_language_id, pos_id, category_id, definition_id, id]
+                );
+                definitionIds.push(definition_id);
+            } else {
+                // Insert new definition
+                const [defResult] = await connection.execute(
+                    `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [id, definition_text, example_text, definition_language_id, pos_id, category_id]
+                );
+                definitionIds.push(defResult.insertId);
+            }
+        }
+
+        // 4. Delete all old synonyms and insert new ones (still replace all synonyms)
+        await connection.execute(`DELETE FROM Synonym WHERE word_id = ?`, [id]);
+        if (synonyms && Array.isArray(synonyms) && synonyms.length > 0) {
+            const synonymValues = synonyms
+                .filter(s => typeof s === 'string' && s.trim() !== '')
+                .map(s => [id, word_language_id, s]);
+            if (synonymValues.length > 0) {
+                await connection.query(
+                    `INSERT INTO Synonym (word_id, language_id, synonym) VALUES ?`,
+                    [synonymValues]
+                );
+            }
+        }
+
+        await connection.commit();
+
+        // 6. Return updated word with definitions and synonyms
+        const [rows] = await connection.query(
+            `SELECT * FROM monburmese_dic
+             WHERE word_id = ?`,
+            [id]
         );
 
-        // 3. Update Synonyms: Simplest approach is to delete all existing and re-insert
-        await pool.execute(`DELETE FROM Synonym WHERE word_id = ?`, [id]);
-        if (synonyms && Array.isArray(synonyms) && synonyms.length > 0) {
-            const synonymValues = synonyms.map(s => [id, s.text]);
-            await pool.query(
-                `INSERT INTO Synonym (word_id, synonym) VALUES ?`,
-                [synonymValues]
-            );
-        }
+        // Parse JSON columns for each row
+        const parsedRows = rows.map(row => ({
+          ...row,
+          word_id: uniqueArray(safeJsonParse(row.word_id)),
+          mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+          pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+          pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+          pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+          pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+          synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+          definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+          definitions: uniqueArray(safeJsonParse(row.definitions)),
+          examples: uniqueArray(safeJsonParse(row.examples)),
+          category_id: uniqueArray(safeJsonParse(row.category_id))
+        })
+      );
 
-        if (wordUpdateResult.affectedRows === 0 && definitionUpdateResult.affectedRows === 0) {
-             await pool.query('ROLLBACK');
-             return res.status(404).json({ message: 'Word or Definition not found.' });
-        }
-
-        await pool.query('COMMIT');
-        res.status(200).json({ message: 'Word and Definition updated successfully' });
+        res.json({ message: 'Word, Definitions, and Synonyms updated successfully', word_id: id, definition_ids: definitionIds, data: parsedRows });
 
     } catch (error) {
-        await pool.query('ROLLBACK');
+        if (connection) await connection.rollback();
         console.error('Error updating word:', error);
         res.status(500).json({ message: 'Failed to update word.', error: error.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 

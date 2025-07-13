@@ -70,7 +70,7 @@ const loginUser = async (req, res) => {
             role: user.role // Include role in token for authorization
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }); // Token expires in 1 hour
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '5h' }); // Token expires in 1 hour
         const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); // Refresh token expires in 1 days
 
         // Save refreshToken in-memory store
