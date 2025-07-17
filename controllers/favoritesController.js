@@ -7,8 +7,10 @@ const getFavorites = async (req, res) => {
     const userId = req.user.userId;
     try {
         const [rows] = await pool.execute(
-            `SELECT f.*, w.word, w.pronunciation, w.language_id FROM Favorite f
-             JOIN Word w ON f.word_id = w.word_id
+            `SELECT f.*, w.word, w.pronunciation, w.language_id, substring(d.definition,1,100) AS definition, p.pos_ENsymbol, p.pos_Mmsymbol FROM Favorite f
+             LEFT OUTER JOIN Word w ON f.word_id = w.word_id
+             LEFT OUTER JOIN definition d ON f.word_id = d.word_id
+             LEFT OUTER JOIN partofspeech p ON d.pos_id = p.pos_id
              WHERE f.user_id = ?`,
             [userId]
         );
