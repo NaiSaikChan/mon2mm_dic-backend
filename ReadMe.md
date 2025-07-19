@@ -320,25 +320,33 @@ Returns all categories from categoryhierarchy view.
 
 ---
 
-### User Favorite
+
+### User Favorites
+
+#### Get All Favorites
 
 ```
 GET /api/favorites
 ```
-
 **Headers:** `Authorization: Bearer <token>`
 
 **Response:**
-
 ```json
 [
   {
-    "pos_id": 1,
-    "pos_ENname": "noun",
+    "favorite_id": 1,
+    "user_id": 2,
+    "word_id": 123,
+    "definition_id": 456,
+    "notes": "optional notes",
+    "metadata": { "any": "optional metadata" },
+    "created_at": "2025-07-19T12:34:56.000Z",
+    "updated_at": "2025-07-19T12:34:56.000Z",
+    "word": "example",
+    "pronunciation": "ɛɡˈzæmpəl",
+    "language_id": 1,
+    "definition": "A thing characteristic of its kind.",
     "pos_ENsymbol": "n",
-    "pos_Monname": "နာမ်",
-    "pos_Monsymbol": "န",
-    "pos_Mmname": "နာမ်",
     "pos_Mmsymbol": "န"
   }
 ]
@@ -346,27 +354,62 @@ GET /api/favorites
 
 ---
 
-### Delete Favorite
+#### Add Favorite
 
 ```
-DELETE /api/favorites/:id
+POST /api/favorites
 ```
-id= word_id
----
-
-### Update Favorite
-
-```
-PATCH /api/favorites/:id
-```
-id= word_id
 **Request:**
-
 ```json
 {
-  "notes": "ကကြီးနှင့်အသံထွက်တူ",
-  "metadata": "အဓိပ္ပါယ်အတူ မွန်ကသည် ငါးကိုဆိုလိုသည်။"
+  "word_id": 123,
+  "definition_id": 456,
+  "notes": "optional notes",
+  "metadata": { "any": "optional metadata" }
 }
+```
+**Response:**
+```json
+{ "message": "Added to favorites." }
+```
+
+---
+
+#### Update Favorite
+
+```
+PATCH /api/favorites/:wordId/:definitionId
+```
+**Params:**
+- `wordId` (required): The word ID
+- `definitionId` (required): The definition ID
+
+**Request:**
+```json
+{
+  "notes": "updated notes",
+  "metadata": { "updated": "metadata" }
+}
+```
+**Response:**
+```json
+{ "message": "Favorite updated." }
+```
+
+---
+
+#### Delete Favorite
+
+```
+DELETE /api/favorites/:wordId/:definitionId
+```
+**Params:**
+- `wordId` (required): The word ID
+- `definitionId` (required): The definition ID
+
+**Response:**
+```json
+{ "message": "Removed from favorites." }
 ```
 
 ---
