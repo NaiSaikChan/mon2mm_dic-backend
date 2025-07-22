@@ -524,6 +524,175 @@ const getCategoriesHierarchy = async (req, res) => {
   }
 };
 
+// Get words by category ID with pagination
+const getWordsByCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  const { page = 1, pageSize = 12, includeSubcategories = 'false' } = req.query;
+
+  const limit = Math.max(parseInt(pageSize), 1);
+  const offset = (Math.max(parseInt(page), 1) - 1) * limit;
+
+  try {
+    // First, get the category information
+    const [categoryRows] = await pool.execute(
+      `SELECT category_id, en_category_name, mm_category_name, mon_category_name, parent_category_id, level 
+       FROM categoryhierarchy WHERE category_id = ?`,
+      [categoryId]
+    );
+
+    if (categoryRows.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const category = categoryRows[0];
+
+    // Use JSON_CONTAINS to search within the category_id JSON array
+    // Count total items
+    const countSql = `SELECT COUNT(*) as total FROM monburmese_dic 
+                      WHERE JSON_CONTAINS(category_id, '${categoryId}')`;
+    const [countResult] = await pool.execute(countSql);
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // Get paginated words
+    const dataSql = `SELECT * FROM monburmese_dic 
+                     WHERE JSON_CONTAINS(category_id, '${categoryId}')
+                     ORDER BY mon_word LIMIT ${limit} OFFSET ${offset}`;
+    const [rows] = await pool.execute(dataSql);
+
+    // Parse JSON columns for each row
+    const parsedRows = rows.map(row => ({
+      ...row,
+      word_id: uniqueArray(safeJsonParse(row.word_id)),
+      mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+      pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+      pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+      pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+      pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+      synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+      definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+      definitions: uniqueArray(safeJsonParse(row.definitions)),
+      examples: uniqueArray(safeJsonParse(row.examples)),
+      category_id: uniqueArray(safeJsonParse(row.category_id))
+    }));
+
+    res.json({
+      data: parsedRows,
+      pagination: {
+        currentPage: parseInt(page),
+        pageSize: limit,
+        totalItems,
+        totalPages,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPreviousPage: parseInt(page) > 1
+      },
+      category
+    });
+
+  } catch (error) {
+    console.error('Error fetching words by category:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+// Search words within a specific category
+const searchWordsInCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  const { query, page = 1, pageSize = 12, searchFields = 'word,definitions' } = req.query;
+
+  if (!query || query.trim() === '') {
+    return res.status(400).json({ message: 'Search query is required' });
+  }
+
+  const limit = Math.max(parseInt(pageSize), 1);
+  const offset = (Math.max(parseInt(page), 1) - 1) * limit;
+  const fieldsArray = searchFields.split(',').map(field => field.trim());
+
+  try {
+    // First, get the category information
+    const [categoryRows] = await pool.execute(
+      `SELECT category_id, en_category_name, mm_category_name, mon_category_name, parent_category_id, level 
+       FROM categoryhierarchy WHERE category_id = ?`,
+      [categoryId]
+    );
+
+    if (categoryRows.length === 0) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const category = categoryRows[0];
+
+    // Build search conditions based on searchFields
+    let searchConditions = [];
+    let searchParams = [];
+    
+    if (fieldsArray.includes('word')) {
+      searchConditions.push('(mon_word = ? OR mon_word LIKE ? OR mon_word LIKE ?)');
+      searchParams.push(query, `${query}%`, `%${query}%`);
+    }
+    
+    if (fieldsArray.includes('definitions')) {
+      searchConditions.push('definitions LIKE ?');
+      searchParams.push(`%${query}%`);
+    }
+
+    if (searchConditions.length === 0) {
+      return res.status(400).json({ message: 'Invalid search fields specified' });
+    }
+
+    const searchCondition = `(${searchConditions.join(' OR ')})`;
+    
+    // Build the complete WHERE clause using the Definition table approach
+    const whereClause = `word_id IN (SELECT word_id FROM Definition WHERE category_id = ?) AND ${searchCondition}`;
+    const allParams = [categoryId, ...searchParams];
+
+    // Count total items
+    const countSql = `SELECT COUNT(DISTINCT word_id) as total FROM monburmese_dic WHERE ${whereClause}`;
+    const [countResult] = await pool.execute(countSql, allParams);
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // Get paginated search results without ordering
+    const dataSql = `SELECT * FROM monburmese_dic WHERE ${whereClause} LIMIT ${limit} OFFSET ${offset}`;
+    const [rows] = await pool.execute(dataSql, allParams);
+
+    // Parse JSON columns for each row
+    const parsedRows = rows.map(row => ({
+      ...row,
+      word_id: uniqueArray(safeJsonParse(row.word_id)),
+      mon_word: uniqueArray(safeJsonParse(row.mon_word)),
+      pronunciation: uniqueArray(safeJsonParse(row.pronunciation)),
+      pos_ids: uniqueArray(safeJsonParse(row.pos_ids)),
+      pos_ENnames: uniqueArray(safeJsonParse(row.pos_ENnames)),
+      pos_Mmnames: uniqueArray(safeJsonParse(row.pos_Mmnames)),
+      synonyms_text: uniqueArray(safeJsonParse(row.synonyms_text)),
+      definition_ids: uniqueArray(safeJsonParse(row.definition_ids)),
+      definitions: uniqueArray(safeJsonParse(row.definitions)),
+      examples: uniqueArray(safeJsonParse(row.examples)),
+      category_id: uniqueArray(safeJsonParse(row.category_id))
+    }));
+
+    res.json({
+      data: parsedRows,
+      pagination: {
+        currentPage: parseInt(page),
+        pageSize: limit,
+        totalItems,
+        totalPages,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPreviousPage: parseInt(page) > 1
+      },
+      category,
+      searchQuery: query,
+      searchFields: fieldsArray
+    });
+
+  } catch (error) {
+    console.error('Error searching words in category:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
 module.exports = {
   searchWords,
   getWordById,
@@ -535,4 +704,6 @@ module.exports = {
   getWordOfTheDay,
   getCategories,
   getCategoriesHierarchy,
+  getWordsByCategory,
+  searchWordsInCategory,
 };

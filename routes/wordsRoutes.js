@@ -10,6 +10,11 @@ router.get('/search', wordsController.searchWords);
 router.get('/paginated-search', wordsController.paginatedSearchWords);
 router.get('/random', wordsController.getRandomWords);
 router.get('/word-of-the-day', wordsController.getWordOfTheDay);
+
+// Category-based endpoints (must come before /:id to avoid conflicts)
+router.get('/categories/:categoryId', wordsController.getWordsByCategory);
+router.get('/categories/:categoryId/search', wordsController.searchWordsInCategory);
+
 router.get('/:id', wordsController.getWordById);
 
 // *** Add a new word ***

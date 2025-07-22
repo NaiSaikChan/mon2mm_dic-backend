@@ -8,7 +8,8 @@ This backend provides a RESTful API for managing a Mon language dictionary, incl
 
 - [🔐 Authentication](#-authentication)
 - [📖 Word Endpoints](#-word-endpoints)
-- [🛠️ Admin Endpoints](#️-admin-endpoints)
+- [� Category Endpoints](#-category-endpoints)
+- [�🛠️ Admin Endpoints](#️-admin-endpoints)
 - [📊 Statistics](#-statistics)
 - [❗ Error Handling](#-error-handling)
 - [📝 Notes](#-notes)
@@ -320,6 +321,8 @@ Returns all categories from categoryhierarchy view.
 
 ---
 
+---
+
 ## Get categories hierarchy (2-level)
 ```
 GET /api/categories/hierarchy
@@ -367,6 +370,179 @@ GET /api/categories/hierarchy
 
 ---
 
+## Get Words by Category
+```
+GET /api/words/categories/{categoryId}
+```
+**Description:** Retrieves words belonging to a specific category with pagination support.
+
+**Path Parameters:**
+- `categoryId` (integer, required): The category ID to filter by
+
+**Query Parameters:**
+- `page` (integer, optional, default: 1): Page number for pagination
+- `pageSize` (integer, optional, default: 12): Number of items per page
+- `includeSubcategories` (boolean, optional, default: false): Include words from subcategories
+
+**Example:**
+```
+GET /api/words/categories/5?page=1&pageSize=10&includeSubcategories=true
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "word_id": 123,
+      "mon_word": "ကွေး",
+      "pronunciation": "kweh",
+      "pos_ids": [1],
+      "pos_ENnames": ["noun"],
+      "pos_Mmnames": ["နာမ်"],
+      "definitions": ["ခွေး"],
+      "examples": ["ကွေးဍောတ် = ခွေးကလေး"],
+      "category_id": [5]
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalItems": 25,
+    "totalPages": 3,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  },
+  "category": {
+    "category_id": 5,
+    "en_category_name": "Animals",
+    "mm_category_name": "တိရစ္ဆာန်များ",
+    "mon_category_name": null,
+    "parent_category_id": 1,
+    "level": 2
+  }
+}
+```
+
+---
+
+## Search Words within Category
+```
+GET /api/words/categories/{categoryId}/search
+```
+**Description:** Search for words within a specific category with advanced filtering options.
+
+**Path Parameters:**
+- `categoryId` (integer, required): The category ID to search within
+
+**Query Parameters:**
+- `query` (string, required): Search term
+- `page` (integer, optional, default: 1): Page number for pagination
+- `pageSize` (integer, optional, default: 12): Number of items per page
+- `includeSubcategories` (boolean, optional, default: false): Include words from subcategories
+- `searchFields` (string, optional, default: "word,definitions"): Comma-separated fields to search in
+
+**Example:**
+```
+GET /api/words/categories/5/search?query=ကွေး&page=1&pageSize=10&includeSubcategories=true&searchFields=word,definitions
+```
+
+**Response:** Same structure as "Get Words by Category" with additional fields:
+```json
+{
+  "data": [...],
+  "pagination": {...},
+  "category": {...},
+  "searchQuery": "ကွေး",
+  "searchFields": ["word", "definitions"]
+}
+```
+
+---
+
+## Get words by category
+```
+GET /api/words/categories/{categoryId}
+```
+**Description:** Returns paginated words filtered by a specific category.
+
+**Path Parameters:**
+- `categoryId` (integer, required): The category ID to filter by
+
+**Query Parameters:**
+- `page` (integer, optional, default: 1): Page number for pagination
+- `pageSize` (integer, optional, default: 12): Number of items per page
+- `includeSubcategories` (boolean, optional, default: false): Include words from subcategories
+
+**Example:** `GET /api/words/categories/1?page=1&pageSize=10&includeSubcategories=true`
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "word_id": 123,
+      "mon_word": "ကၠောန်",
+      "pronunciation": "klaun",
+      "pos_ids": [4],
+      "pos_ENnames": ["verb"],
+      "pos_Mmnames": ["ကြိယာ"],
+      "definitions": ["လုပ်သည်။"],
+      "examples": ["ကၠောန်ကမၠောန် = အလုပ်လုပ်သည်။"],
+      "category_id": [1]
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalItems": 45,
+    "totalPages": 5,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  },
+  "category": {
+    "category_id": 1,
+    "en_category_name": "Living Beings",
+    "mm_category_name": "သက်ရှိများ",
+    "mon_category_name": null,
+    "level": 1,
+    "parent_category_id": null
+  }
+}
+```
+
+---
+
+## Search words within category
+```
+GET /api/words/categories/{categoryId}/search
+```
+**Description:** Search for words within a specific category with advanced filtering options.
+
+**Path Parameters:**
+- `categoryId` (integer, required): The category ID to search within
+
+**Query Parameters:**
+- `query` (string, required): Search term
+- `page` (integer, optional, default: 1): Page number for pagination
+- `pageSize` (integer, optional, default: 12): Number of items per page
+- `includeSubcategories` (boolean, optional, default: false): Include words from subcategories
+- `searchFields` (string, optional, default: "word,definitions"): Comma-separated fields to search in (word, definitions)
+
+**Example:** `GET /api/words/categories/1/search?query=ကၠောန်&includeSubcategories=true&searchFields=word,definitions`
+
+**Response:** Same format as "Get words by category" with additional fields:
+```json
+{
+  "data": [...],
+  "pagination": {...},
+  "category": {...},
+  "searchQuery": "ကၠောန်",
+  "searchFields": ["word", "definitions"]
+}
+```
+
+---
 
 ### User Favorites
 
