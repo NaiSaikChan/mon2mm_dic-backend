@@ -482,6 +482,48 @@ const getCategories = async (req, res) => {
   }
 };
 
+// Get categories organized in 2-level hierarchy
+const getCategoriesHierarchy = async (req, res) => {
+  try {
+    // Get level 1 categories (parent categories)
+    const [level1Rows] = await pool.execute(
+      `SELECT category_id, en_category_name, mm_category_name, mon_category_name, parent_category_id, level 
+       FROM categoryhierarchy
+       WHERE level = 1
+       ORDER BY parent_category_id`
+    );
+
+    // Get level 2 categories (child categories)
+    const [level2Rows] = await pool.execute(
+      `SELECT category_id, en_category_name, mm_category_name, mon_category_name, parent_category_id, level 
+       FROM categoryhierarchy
+       WHERE level = 2
+       ORDER BY parent_category_id`
+    );
+
+    // Organize the data into hierarchy structure
+    const categoryHierarchy = level1Rows.map(level1Category => ({
+      ...level1Category,
+      subcategories: level2Rows.filter(level2Category => 
+        level2Category.parent_category_id === level1Category.category_id
+      )
+    }));
+
+    res.json({
+      categories: categoryHierarchy,
+      meta: {
+        level1Count: level1Rows.length,
+        level2Count: level2Rows.length,
+        totalCategories: level1Rows.length + level2Rows.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching categories hierarchy:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
 module.exports = {
   searchWords,
   getWordById,
@@ -492,4 +534,5 @@ module.exports = {
   getRandomWords,
   getWordOfTheDay,
   getCategories,
+  getCategoriesHierarchy,
 };

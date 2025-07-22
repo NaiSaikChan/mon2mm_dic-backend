@@ -320,6 +320,53 @@ Returns all categories from categoryhierarchy view.
 
 ---
 
+## Get categories hierarchy (2-level)
+```
+GET /api/categories/hierarchy
+```
+**Description:** Returns categories organized in a 2-level hierarchy structure with parent categories and their subcategories.
+
+**Response:**
+```json
+{
+  "categories": [
+    {
+      "category_id": 1,
+      "en_category_name": "Living Beings/Creatures",
+      "mm_category_name": "သက်ရှိများ/သတ္တဝါများ",
+      "mon_category_name": null,
+      "parent_category_id": null,
+      "level": 1,
+      "subcategories": [
+        {
+          "category_id": 3,
+          "en_category_name": "Human Beings",
+          "mm_category_name": "လူသားများ",
+          "mon_category_name": null,
+          "parent_category_id": 1,
+          "level": 2
+        },
+        {
+          "category_id": 4,
+          "en_category_name": "Animals",
+          "mm_category_name": "တိရစ္ဆာန်များ",
+          "mon_category_name": null,
+          "parent_category_id": 1,
+          "level": 2
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "level1Count": 5,
+    "level2Count": 15,
+    "totalCategories": 20
+  }
+}
+```
+
+---
+
 
 ### User Favorites
 

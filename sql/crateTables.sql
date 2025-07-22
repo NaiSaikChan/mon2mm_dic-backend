@@ -51,7 +51,10 @@ VALUES ('1', 'noun', 'n', 'နာမ်', 'န', 'နာမ်', 'န')
 ,('15', 'thai', 'tha', 'သေံ', 'သေံ', 'ယိုးဒယားသက်', 'ယိုး')
 ,('16', 'Hyndhu', 'Hynd', 'ဟိန္ဒူ', 'ဟိန္ဒူ', 'ဟိန္ဒူသက်ဝေါဟာရ', 'ဟိန္ဒူ')
 ,('17', 'Unknow', 'Unknow', 'Unknow', 'Unknow', 'Unknow', 'Unknow')
-,('18', 'malay', 'malay', 'မလေဝ်', 'မလ', 'မလေး', 'မလ');
+,('18', 'malay', 'malay', 'မလေဝ်', 'မလ', 'မလေး', 'မလ')
+,('19','bengali','ben','ဘင်္ဂါဠဳ','ဘဂဠ','ဘင်္ဂါလီ','ဘဂလ')
+,('20','number','num','ဂၞန်','ဂၞန်','ဂဏန်း','ဂဏန်း')
+;
 
 -- Create Word Table
 DROP TABLE IF EXISTS Word;
@@ -327,17 +330,27 @@ CREATE INDEX idx_parent_category_id ON Category (parent_category_id);
 
 
 -- //Create user favorite table
+DROP TABLE IF EXISTS Favorite;
+
 CREATE TABLE Favorite (
     favorite_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     word_id INT NOT NULL,
+    definition_id INT NOT NULL,
     notes TEXT,
     metadata JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
     UNIQUE KEY unique_favorite (user_id, word_id),
-    FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (word_id) REFERENCES Word(word_id) ON DELETE CASCADE
+    
+    INDEX idx_user_id (user_id),
+    INDEX idx_word_id (word_id),
+    INDEX idx_definition_id (definition_id),
+    
+    CONSTRAINT fk_favorite_user FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_favorite_word FOREIGN KEY (word_id) REFERENCES Word(word_id) ON DELETE CASCADE,
+    CONSTRAINT fk_favorite_definition FOREIGN KEY (definition_id) REFERENCES Definition(definition_id) ON DELETE CASCADE
 );
 
 -- //Create user table
