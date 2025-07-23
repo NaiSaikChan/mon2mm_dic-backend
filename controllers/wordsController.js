@@ -114,9 +114,20 @@ const addWord = async (req, res) => {
         if (definitions && Array.isArray(definitions)) {
             for (const def of definitions) {
                 const { definition_text, example_text, definition_language_id, pos_id, category_id } = def;
+                
+                // Handle category_id properly - convert array to first element or null
+                let processedCategoryId = category_id;
+                if (Array.isArray(category_id)) {
+                    processedCategoryId = category_id.length > 0 && category_id[0] !== null ? category_id[0] : null;
+                }
+                // Convert null, undefined, or empty string to null for database
+                if (processedCategoryId === undefined || processedCategoryId === '' || processedCategoryId === 'null') {
+                    processedCategoryId = null;
+                }
+                
                 const [defResult] = await connection.execute(
                     `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [word_id, definition_text, example_text, definition_language_id, pos_id, category_id]
+                    [word_id, definition_text, example_text, definition_language_id, pos_id, processedCategoryId]
                 );
                 definitionIds.push(defResult.insertId);
             }
@@ -208,18 +219,29 @@ const updateWord = async (req, res) => {
         let definitionIds = [];
         for (const def of definitions) {
             const { definition_id, definition_text, example_text, definition_language_id, pos_id, category_id } = def;
+            
+            // Handle category_id properly - convert array to first element or null
+            let processedCategoryId = category_id;
+            if (Array.isArray(category_id)) {
+                processedCategoryId = category_id.length > 0 && category_id[0] !== null ? category_id[0] : null;
+            }
+            // Convert null, undefined, or empty string to null for database
+            if (processedCategoryId === undefined || processedCategoryId === '' || processedCategoryId === 'null') {
+                processedCategoryId = null;
+            }
+            
             if (definition_id) {
                 // Update existing definition
                 await connection.execute(
                     `UPDATE Definition SET definition = ?, example = ?, language_id = ?, pos_id = ?, category_id = ? WHERE definition_id = ? AND word_id = ?`,
-                    [definition_text, example_text, definition_language_id, pos_id, category_id, definition_id, id]
+                    [definition_text, example_text, definition_language_id, pos_id, processedCategoryId, definition_id, id]
                 );
                 definitionIds.push(definition_id);
             } else {
                 // Insert new definition
                 const [defResult] = await connection.execute(
                     `INSERT INTO Definition (word_id, definition, example, language_id, pos_id, category_id) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [id, definition_text, example_text, definition_language_id, pos_id, category_id]
+                    [id, definition_text, example_text, definition_language_id, pos_id, processedCategoryId]
                 );
                 definitionIds.push(defResult.insertId);
             }
