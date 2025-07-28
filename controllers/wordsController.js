@@ -391,6 +391,7 @@ const paginatedSearchWords = async (req, res) => {
     sql += ` LIMIT ? OFFSET ?;`;
     const [rows] = await pool.execute(
       sql,
+      //[...params, `${limit}`, `${offset}`]
       [...params, ...orderParams, `${limit}`, `${offset}`]
     );
 

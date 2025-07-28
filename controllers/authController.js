@@ -4,7 +4,7 @@ const { pool } = require('../app');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // In-memory store for refresh tokens (key: userId, value: refreshToken)
 const refreshTokensStore = {};

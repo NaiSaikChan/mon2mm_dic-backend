@@ -7,7 +7,7 @@ const mysql = require('mysql2/promise');
 const app = express();
 const port = process.env.PORT;
 
-// Database Connection Pool ဖန်တီးခြင်း။
+// Database Connection Pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -19,7 +19,7 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Database Connection ကို စစ်ဆေးခြင်း။
+// Database Connection
 pool.getConnection()
   .then(connection => {
     console.log('Successfully connected to MySQL database!');
@@ -36,13 +36,13 @@ module.exports = {
     pool // Database connection pool
 };
 
-// Middleware တွေ ထည့်သွင်းခြင်း။ (JSON request body တွေကို parse လုပ်နိုင်ဖို့)
+// Middleware
 const cors = require('cors');
 app.use(cors());
 app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
 
-// 3. API Routes တွေကို app မှာ Use လုပ်မယ်။
+// 3. API Routes
 const wordsRoutes = require('./routes/wordsRoutes');
 app.use('/api/words', wordsRoutes);
 

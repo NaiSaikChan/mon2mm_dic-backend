@@ -328,6 +328,20 @@ INSERT INTO Category (parent_category_id, en_category_name, mm_category_name, mo
 -- Add an index for faster lookups on parent categories
 CREATE INDEX idx_parent_category_id ON Category (parent_category_id);
 
+-- //Create User
+DROP TABLE IF EXISTS User;
+
+CREATE TABLE User (
+  user_id int NOT NULL AUTO_INCREMENT,
+  username varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  password_hash varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  role varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'user',
+  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  email varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'User email',
+  PRIMARY KEY (user_id),
+  UNIQUE KEY username (username),
+  UNIQUE KEY email_UNIQUE (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 
 -- //Create user favorite table
 DROP TABLE IF EXISTS Favorite;
@@ -352,22 +366,6 @@ CREATE TABLE Favorite (
     CONSTRAINT fk_favorite_word FOREIGN KEY (word_id) REFERENCES Word(word_id) ON DELETE CASCADE,
     CONSTRAINT fk_favorite_definition FOREIGN KEY (definition_id) REFERENCES Definition(definition_id) ON DELETE CASCADE
 );
-
--- //Create user table
-CREATE TABLE User (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) DEFAULT 'user', -- e.g., 'admin', 'user'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO mondictionary.User
-(username,
-password_hash,
-role)
-VALUES
-('admin','@Admin1234!','admin');
 
 -- //Crate the monburmese_dic with JSON Array row.
 DROP VIEW IF EXISTS monburmese_dic;

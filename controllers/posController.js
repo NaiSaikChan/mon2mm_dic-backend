@@ -2,7 +2,7 @@
 const { pool } = require('../app');
 const getPartOfSpeeches = async (req, res) => {
     try {
-        const [rows] = await pool.execute(`SELECT * FROM MonDictionary.PartOfSpeech ORDER BY pos_id;`);
+        const [rows] = await pool.execute(`SELECT * FROM PartOfSpeech ORDER BY pos_id;`);
         res.json(rows);
     } catch (error) {
         console.error('Error fetching Part of Speeches:', error);
