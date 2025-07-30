@@ -70,8 +70,8 @@ const loginUser = async (req, res) => {
             role: user.role // Include role in token for authorization
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '5h' }); // Token expires in 1 hour
-        const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); // Refresh token expires in 1 days
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '3h' }); // Token expires in 3 hours
+        const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' }); // Refresh token expires in 1 day
 
         // Save refreshToken in-memory store
         refreshTokensStore[user.user_id] = refreshToken;
@@ -104,13 +104,25 @@ const refreshAccessToken = (req, res) => {
         if (refreshTokensStore[decoded.userId] !== refreshToken) {
             return res.status(403).json({ message: 'Invalid refresh token.' });
         }
-        // Issue new access token
+        // Issue new access token and refresh token
         const newAccessToken = jwt.sign(
             { userId: decoded.userId, username: decoded.username, role: decoded.role },
             JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '3h' }
         );
-        res.json({ token: newAccessToken });
+        const newRefreshToken = jwt.sign(
+            { userId: decoded.userId, username: decoded.username, role: decoded.role },
+            JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+        
+        // Update refresh token in store
+        refreshTokensStore[decoded.userId] = newRefreshToken;
+        
+        res.json({ 
+            token: newAccessToken,
+            refreshToken: newRefreshToken 
+        });
     } catch (error) {
         return res.status(403).json({ message: 'Invalid or expired refresh token.' });
     }

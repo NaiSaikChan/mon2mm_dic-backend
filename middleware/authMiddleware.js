@@ -3,7 +3,7 @@
 const jwt = require('jsonwebtoken');
 
 // Secret key for JWT. This must be the SAME as in authController.js
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key'; // CHANGE THIS IN PRODUCTION
+const JWT_SECRET = process.env.JWT_SECRET; // CHANGE THIS IN PRODUCTION
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
